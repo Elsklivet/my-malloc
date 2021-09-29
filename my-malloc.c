@@ -98,3 +98,47 @@ void *malloc(size_t size){
   return (void*)(header + 1);
 
 }
+
+void free(void *block)
+{
+  header_t *header, *tmp;
+  void *programbreak;
+  /* if the block is null anyway */
+  if(!block)
+    return;
+
+  /* lock malloc */
+  pthread_mutex_lock(&global_malloc_lock);
+  /* get block header */
+  header = (header_t*)block - 1;
+  programbreak = sbrk(0);
+  /* if the block is at the end of the heap, shrink the heap and
+    release that space to the OS */
+  if((char*)block + header->s.size) == programbreak)
+  {
+    if(head == tail)
+    {
+      head = tail = NULL;
+    }
+    else
+    {
+      tmp = head;
+      while(tmp)
+      {
+        if(tmp->s.next == tail)
+        {
+          tmp->s.next = NULL;
+          tail = tmp;
+        }
+        tmp = tmp->s.next;
+      }
+    }
+    /* negative value frees heap */
+    sbrk(0 - sizeof(header_t) - header->s.size);
+    pthread_mutex_unlock(&global_malloc_lock);
+    return;
+  }
+  /* otherwise flip free flag */
+  header->s.is_free = 1;
+  pthread_mutex_unlock(&global_malloc_lock);
+}
