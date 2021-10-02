@@ -103,6 +103,7 @@ void free(void *block)
 {
   header_t *header, *tmp;
   void *programbreak;
+
   /* if the block is null anyway */
   if(!block)
     return;
@@ -114,7 +115,7 @@ void free(void *block)
   programbreak = sbrk(0);
   /* if the block is at the end of the heap, shrink the heap and
     release that space to the OS */
-  if((char*)block + header->s.size) == programbreak)
+  if(((char*)block + header->s.size) == programbreak)
   {
     if(head == tail)
     {
@@ -139,6 +140,38 @@ void free(void *block)
     return;
   }
   /* otherwise flip free flag */
-  header->s.is_free = 1;
+  header->s.is_free = 1; /* <!> segfaults <!> */
   pthread_mutex_unlock(&global_malloc_lock);
+}
+
+void *calloc(size_t num, size_t nsize)
+{
+  size_t size;
+  void *block;
+  if(!num || !nsize) return NULL;
+  size = num * nsize;
+  /* check for a multiplicative overflow */
+  if(nsize != size / num) return NULL;
+  block = malloc(size);
+  if(!block) return NULL;
+  memset(block, 0, size);
+  return block;
+}
+
+void *realloc(void *block, size_t size)
+{
+  header_t *header;
+  void *return_block;
+  if(!block || !size) return malloc(size);
+  header = (header_t*) block - 1;
+  /* if the block already has enough space to fit the realloc, do nothing */
+  if(header->s.size >= size) return block;
+  /* otherwise malloc more room and do a memcpy to move it over */
+  return_block = malloc(size);
+  if(return_block)
+  {
+    memcpy(return_block, block, header->s.size);
+    free(block);
+  }
+  return return_block;
 }
