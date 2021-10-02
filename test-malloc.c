@@ -1,12 +1,11 @@
-#include "my-malloc.c"
+#include "dan-malloc.c"
 #include <stdio.h>
 
 int main()
 {
-    char* string = malloc(6*sizeof(char));
-    if(!string) return 0x1;
-    string = "abcd\n";
-    printf(string);
-    free(string);
+    int* ptr = malloc(1*sizeof(int));
+    *ptr = 0xbeefc0de;
+    printf("%x\n", *ptr);
+    free(ptr);
     return 0;
 }
